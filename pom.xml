@@ -168,16 +168,10 @@
 
     <distributionManagement>
         <repository>
-            <id>mulesoft-releases</id>
-            <name>MuleSoft Repository</name>
-            <url>https://repository.mulesoft.org/releases/</url>
+            <id>central</id>
+            <name>indeni-releases</name>
+            <url>https://indeni.jfrog.io/indeni/libs-release-local</url>
         </repository>
-        <snapshotRepository>
-            <id>mulesoft-snapshots</id>
-            <name>MuleSoft Snapshot Repository</name>
-            <url>https://repository.mulesoft.org/snapshots/</url>
-            <uniqueVersion>false</uniqueVersion>
-        </snapshotRepository>
     </distributionManagement>
 
     <dependencies>
