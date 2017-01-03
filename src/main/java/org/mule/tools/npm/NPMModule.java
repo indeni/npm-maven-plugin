@@ -25,22 +25,20 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class NPMModule {
 
-    public static String npmUrl = "http://registry.npmjs.org/%s/%s";
     public static Proxy proxy = null;
+    public static String username = null;
+    public static String password = null;
 
     private String name;
     public String version;
     private Log log;
     private List<NPMModule> dependencies;
     private URL downloadURL;
-    
+
     public String getName() {
         return name;
     }
@@ -64,6 +62,7 @@ public class NPMModule {
     private static InputStream getInputStreamFromUrl(final URL url) throws IOException {
 
         URLConnection conn = null;
+        final sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
         if (proxy != null) {
             final String proxyUser = proxy.getUsername();
             final String proxyPassword = proxy.getPassword();
@@ -81,21 +80,23 @@ public class NPMModule {
             final java.net.Proxy jproxy = new java.net.Proxy(proxyProtocol, sa);
             conn = url.openConnection(jproxy);
 
-            if (proxyUser != null && proxyUser != "") {
-                @SuppressWarnings("restriction")
-                final sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
+            if (proxyUser != null && !proxyUser.equals("")) {
                 @SuppressWarnings("restriction")
                 final String encodedUserPwd = encoder.encode((proxyUser + ":" + proxyPassword).getBytes());
                 conn.setRequestProperty("Proxy-Authorization", "Basic " + encodedUserPwd);
             }
         } else {
             conn = url.openConnection();
+            if (username != null && password != null) {
+                final String encodedUserPwd = encoder.encode((username + ":" + password).getBytes());
+                conn.setRequestProperty("Authorization", "Basic " + encodedUserPwd);
+            }
         }
         return conn.getInputStream();
     }
 
     private static String loadTextFromUrl(final URL url)
-        throws IOException {
+            throws IOException {
         return IOUtils.toString(getInputStreamFromUrl(url));
     }
 
@@ -106,7 +107,7 @@ public class NPMModule {
         File outputFolderFileTmp = new File(file, name + "_tmp");
         File outputFolderFile = new File(file, name);
 
-        if ( outputFolderFile.exists() ) {
+        if (outputFolderFile.exists()) {
             //Already downloaded nothing to do
             return;
         }
@@ -120,7 +121,7 @@ public class NPMModule {
 
         try {
             os = new FileOutputStream(tarFile);
-            is = getInputStreamFromUrl(getDownloadURL()); 
+            is = getInputStreamFromUrl(getDownloadURL());
 
             DownloadCountingOutputStream dcount = new DownloadCountingOutputStream(os);
             dcount.setListener(progressListener);
@@ -131,9 +132,9 @@ public class NPMModule {
             IOUtils.copy(is, dcount);
 
         } catch (FileNotFoundException e) {
-            throw new MojoExecutionException(String.format("Error downloading module %s:%s", name,version),e);
+            throw new MojoExecutionException(String.format("Error downloading module %s:%s", name, version), e);
         } catch (IOException e) {
-            throw new MojoExecutionException(String.format("Error downloading module %s:%s", name,version),e);
+            throw new MojoExecutionException(String.format("Error downloading module %s:%s", name, version), e);
         } finally {
             IOUtils.closeQuietly(os);
             IOUtils.closeQuietly(is);
@@ -161,7 +162,7 @@ public class NPMModule {
             } else {
                 throw new MojoExecutionException(String.format(
                         "Only one file should be present at the folder when " +
-                        "unpacking module %s:%s: ", name, version));
+                                "unpacking module %s:%s: ", name, version));
             }
         }
 
@@ -169,7 +170,7 @@ public class NPMModule {
             FileUtils.moveDirectory(fileToMove, outputFolderFile);
         } catch (IOException e) {
             throw new MojoExecutionException(String.format("Error moving to the final folder when " +
-                    "unpacking module %s:%s: ", name, version),e);
+                    "unpacking module %s:%s: ", name, version), e);
         }
 
         try {
@@ -180,16 +181,16 @@ public class NPMModule {
 
     }
 
-    private void downloadDependencies(Map dependenciesMap) throws IOException, MojoExecutionException {
-        for (Object dependencyAsObject :dependenciesMap.entrySet()){
+    private void downloadDependencies(String npmUrl, Map dependenciesMap) throws IOException, MojoExecutionException {
+        for (Object dependencyAsObject : dependenciesMap.entrySet()) {
             Map.Entry dependency = (Map.Entry) dependencyAsObject;
             String dependencyName = (String) dependency.getKey();
 
             String version = ((String) dependency.getValue());
 
             try {
-                version = new VersionResolver().getNextVersion(log, dependencyName, version);
-                dependencies.add(fromNameAndVersion(log, dependencyName, version));
+                version = new VersionResolver().getNextVersion(log, npmUrl, dependencyName, version);
+                dependencies.add(fromNameAndVersion(log, npmUrl, dependencyName, version));
             } catch (Exception e) {
                 throw new RuntimeException("Error resolving dependency: " +
                         dependencyName + ":" + version + " not found.");
@@ -198,15 +199,15 @@ public class NPMModule {
         }
     }
 
-    public static Set downloadMetadataList(String name) throws IOException, JsonParseException {
-        URL dl = new URL(String.format(npmUrl,name,""));
+    public static Set downloadMetadataList(String npmUrl, String name) throws IOException, JsonParseException {
+        URL dl = new URL(String.format(npmUrl, name, ""));
         ObjectMapper objectMapper = new ObjectMapper();
-        Map allVersionsMetadata = objectMapper.readValue(loadTextFromUrl(dl),Map.class);
+        Map allVersionsMetadata = objectMapper.readValue(loadTextFromUrl(dl), Map.class);
         return ((Map) allVersionsMetadata.get("versions")).keySet();
     }
 
-    private Map downloadMetadata(String name, String version) throws IOException, JsonParseException {
-        return downloadMetadata(new URL(String.format(npmUrl,name,version != null ? version : "latest")));
+    private Map downloadMetadata(String npmUrl, String version, String name) throws IOException, JsonParseException {
+        return downloadMetadata(new URL(String.format(npmUrl, name, version != null ? version : "latest")));
     }
 
     public static Map downloadMetadata(URL dl) throws IOException {
@@ -222,10 +223,10 @@ public class NPMModule {
         }
     }
 
-    private void downloadModule() throws MojoExecutionException {
+    private void downloadModule(String npmUrl) throws MojoExecutionException {
 
         try {
-            Map jsonMap = downloadMetadata(name,version);
+            Map jsonMap = downloadMetadata(npmUrl, version, name);
 
             Map distMap = (Map) jsonMap.get("dist");
             this.downloadURL = new URL((String) distMap.get("tarball"));
@@ -234,28 +235,29 @@ public class NPMModule {
             Map dependenciesMap = (Map) jsonMap.get("dependencies");
 
             if (dependenciesMap != null) {
-                downloadDependencies(dependenciesMap);
+                downloadDependencies(npmUrl, dependenciesMap);
             }
 
         } catch (MalformedURLException e) {
-            throw new MojoExecutionException(String.format("Error downloading module info %s:%s", name,version),e);
+            throw new MojoExecutionException(String.format("Error downloading module info %s:%s", name, version), e);
         } catch (JsonMappingException e) {
-            throw new MojoExecutionException(String.format("Error downloading module info %s:%s", name,version),e);
+            throw new MojoExecutionException(String.format("Error downloading module info %s:%s", name, version), e);
         } catch (JsonParseException e) {
-            throw new MojoExecutionException(String.format("Error downloading module info %s:%s", name,version),e);
+            throw new MojoExecutionException(String.format("Error downloading module info %s:%s", name, version), e);
         } catch (IOException e) {
-            throw new MojoExecutionException(String.format("Error downloading module info %s:%s", name,version),e);
+            throw new MojoExecutionException(String.format("Error downloading module info %s:%s", name, version), e);
         }
     }
 
-    private NPMModule() {}
-
-    public static NPMModule fromQueryString(Log log, String nameAndVersion) throws MojoExecutionException {
-        String[] splitNameAndVersion = nameAndVersion.split(":");
-        return fromNameAndVersion(log, splitNameAndVersion[0], splitNameAndVersion[1]);
+    private NPMModule() {
     }
 
-    public static NPMModule fromNameAndVersion(Log log, String name, String version)
+    public static NPMModule fromQueryString(Log log, String npmUrl, String nameAndVersion) throws MojoExecutionException {
+        String[] splitNameAndVersion = nameAndVersion.split(":");
+        return fromNameAndVersion(log, npmUrl, splitNameAndVersion[0], splitNameAndVersion[1]);
+    }
+
+    public static NPMModule fromNameAndVersion(Log log, String npmUrl, String name, String version)
             throws IllegalArgumentException,
             MojoExecutionException {
         NPMModule module = new NPMModule();
@@ -268,7 +270,7 @@ public class NPMModule {
 
         module.version = version;
         module.dependencies = new ArrayList<NPMModule>();
-        module.downloadModule();
+        module.downloadModule(npmUrl);
         return module;
     }
 
@@ -276,8 +278,8 @@ public class NPMModule {
         return downloadURL;
     }
 
-    public static NPMModule fromName(Log log, String name) throws MojoExecutionException {
-        return fromNameAndVersion(log, name, null);
+    public static NPMModule fromName(Log log, String npmUrl, String name) throws MojoExecutionException {
+        return fromNameAndVersion(log, npmUrl, name, null);
     }
 
 }

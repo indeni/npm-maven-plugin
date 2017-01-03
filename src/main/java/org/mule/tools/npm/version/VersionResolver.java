@@ -32,7 +32,7 @@ public class VersionResolver {
         return leftVersion;
     }
 
-    public String getNextVersion(Log log, String dependencyName, String versionRange)
+    public String getNextVersion(Log log, String npmUrl, String dependencyName, String versionRange)
             throws IOException, MojoExecutionException {
         Pattern pattern = Pattern.compile(VERSION_REGEX);
         Matcher matcher = pattern.matcher(versionRange);
@@ -43,7 +43,7 @@ public class VersionResolver {
                     versionRange + " of " + dependencyName );
         }
 
-        Set set = NPMModule.downloadMetadataList(dependencyName);
+        Set set = NPMModule.downloadMetadataList(npmUrl, dependencyName);
 
         /* Case where '*' */
         if ("*".equals(matcher.group())) {

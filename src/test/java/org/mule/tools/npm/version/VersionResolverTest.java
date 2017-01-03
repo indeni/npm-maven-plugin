@@ -11,6 +11,7 @@ package org.mule.tools.npm.version;
 import org.apache.maven.plugin.logging.Log;
 import org.junit.Test;
 import org.mule.tools.npm.NPMModule;
+import org.mule.tools.npm.NPMMojo;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,6 +22,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.mock;
 
 public class VersionResolverTest {
+
+    String npmUrl = NPMMojo.DEFAULT_NPM_URL;
 
     @Test
     public void testRegex() throws Exception {
@@ -42,23 +45,23 @@ public class VersionResolverTest {
     public void testGetNextVersion() throws Exception {
         VersionResolver versionResolver = new VersionResolver();
 
-        String debugVersion = versionResolver.getNextVersion(mock(Log.class), "debug", "*");
+        String debugVersion = versionResolver.getNextVersion(mock(Log.class), npmUrl, "debug", "*");
         assertNotNull(debugVersion);
         assertFalse("*".equals(debugVersion));
 
-        String abbrevVersion = versionResolver.getNextVersion(mock(Log.class), "abbrev", "1");
+        String abbrevVersion = versionResolver.getNextVersion(mock(Log.class), npmUrl, "abbrev", "1");
         assertNotNull(abbrevVersion);
         assertFalse("1".equals(abbrevVersion));
 
-        String coffeeScriptVersion = versionResolver.getNextVersion(mock(Log.class), "coffee-script", "~1.3.3");
+        String coffeeScriptVersion = versionResolver.getNextVersion(mock(Log.class), npmUrl, "coffee-script", "~1.3.3");
         assertNotNull(coffeeScriptVersion);
         assertEquals("1.3.3", coffeeScriptVersion);
 
-        String sequenceVersion = versionResolver.getNextVersion(mock(Log.class), "sequence", ">= 2.2.1");
+        String sequenceVersion = versionResolver.getNextVersion(mock(Log.class), npmUrl, "sequence", ">= 2.2.1");
         assertNotNull(sequenceVersion);
         assertEquals("2.2.1", sequenceVersion);
 
-        String wordwrapVersion = versionResolver.getNextVersion(mock(Log.class), "wordwrap", ">=0.0.1 <0.1.0");
+        String wordwrapVersion = versionResolver.getNextVersion(mock(Log.class), npmUrl, "wordwrap", ">=0.0.1 <0.1.0");
         assertNotNull(wordwrapVersion);
         assertEquals("0.0.1", wordwrapVersion);
 

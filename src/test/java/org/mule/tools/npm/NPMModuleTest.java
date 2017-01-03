@@ -23,19 +23,19 @@ public class NPMModuleTest {
 
     @Test
     public void testDownloadLess() throws Exception {
-        NPMModule npmModule = NPMModule.fromNameAndVersion(mock(Log.class), "less", "1.0.32");
+        NPMModule npmModule = NPMModule.fromNameAndVersion(mock(Log.class), NPMMojo.DEFAULT_NPM_URL, "less", "1.0.32");
         npmModule.saveToFile(new File("target/less-test"));
     }
 
     @Test
-    public void testDownloadRecess() throws Exception {
-        NPMModule npmModule2 = NPMModule.fromName(mock(Log.class), "recess");
-        npmModule2.saveToFileWithDependencies(new File("target/recess-test"));
+    public void testDownloadVigile() throws Exception {
+        NPMModule npmModule2 = NPMModule.fromName(mock(Log.class), NPMMojo.DEFAULT_NPM_URL, "vigile");
+        npmModule2.saveToFileWithDependencies(new File("target/vigile-test"));
     }
 
     @Test
     public void testDownloadJshint() throws Exception {
-        NPMModule npmModule3 = NPMModule.fromQueryString(mock(Log.class), "jshint:0.8.1");
+        NPMModule npmModule3 = NPMModule.fromQueryString(mock(Log.class), NPMMojo.DEFAULT_NPM_URL, "jshint:0.8.1");
         npmModule3.saveToFileWithDependencies(new File("target/jshint-test"));
     }
 }
