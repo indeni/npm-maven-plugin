@@ -170,7 +170,7 @@
         <repository>
             <id>central</id>
             <name>indeni-releases</name>
-            <url>https://indeni.jfrog.io/indeni/libs-release-local</url>
+            <url>https://indeni.jfrog.io/indeni/plugins-release-local</url>
         </repository>
     </distributionManagement>
 
